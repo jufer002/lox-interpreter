@@ -1,0 +1,34 @@
+
+
+fun printSum(a, b) {
+    print a + b;
+}
+
+fun returnSum(a, b) {
+    return a + b;
+}
+
+var c = returnSum(1, 2);
+print "c should equal 3";
+print c;
+
+fun outerFunction() {
+    fun localFunction() {
+        print "I'm local!";
+    }
+
+    localFunction();
+}
+
+fun returnFunction() {
+    var outside = "outside";
+
+    fun inner() {
+        print outside;
+    }
+
+    return inner;
+}
+
+var fn = returnFunction();
+fn();

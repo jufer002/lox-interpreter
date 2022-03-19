@@ -12,3 +12,4 @@ name = "lox_interpreter"
 path = "src/lib.rs"
 
 [dependencies]
+assert_cmd = "2.0.4"
