@@ -1,9 +1,11 @@
-use std::io::{stdin, BufRead, BufReader, Write};
+use std::io::{stdin, BufRead, BufReader, Write, Read};
+use crate::interpreter::exec_line;
 
+// Start a Lox REPL that will continually interpret lines until it receives the 'exit' command
 pub fn run_repl() {
     loop {
         print_prompt();
-        let line = read_line();
+        let line = read_line(stdin());
         if line == "exit" {
             break;
         }
@@ -19,8 +21,8 @@ fn print_prompt() {
 }
 
 // Read a line and return it
-fn read_line() -> String {
-    let mut reader = BufReader::new(stdin());
+fn read_line(read_src: impl Read) -> String {
+    let mut reader = BufReader::new(read_src);
     let mut buffer = String::new();
     reader.read_line(&mut buffer).unwrap();
     // Strip CRLF or LF
@@ -31,15 +33,24 @@ fn read_line() -> String {
         .to_string()
 }
 
-// Execute a line of lox
-fn exec_line(line: String) {
-    // Get a list of tokens from the line
-    let tokens = line.split_whitespace();
-    for token in tokens {
-        println!("token: {}", token);
-    }
-}
+#[cfg(test)]
+mod test_repl {
+    use super::*;
 
-fn reportError(line: u32, err_loc: &str, err_msg: &str) {
-    println!("[line {}] Error {}: {}", line, err_loc, err_msg);
+    #[test]
+    fn test_read_line() {
+        let inputs = vec![
+            "abc\r\n",
+            "abc\n",
+            "abc"
+        ];
+
+        for input in inputs {
+            let abc = read_line(input.as_bytes());
+            assert_eq!("abc", abc);
+        }
+        
+        // Test that reading an empty line is ok
+        read_line("".as_bytes());
+    }
 }

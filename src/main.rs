@@ -1,5 +1,8 @@
-use std::{env, fs};
+mod interpreter;
 mod repl;
+mod lex;
+
+use std::{env, fs};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
