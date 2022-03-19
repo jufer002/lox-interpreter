@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "lox_interpreter"
+name = "rlox"
 path = "src/main.rs"
 
 [lib]
 name = "lox_interpreter"
 path = "src/lib.rs"
 
-[dependencies]
+[dev-dependencies]
 assert_cmd = "2.0.4"
