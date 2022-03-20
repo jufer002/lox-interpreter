@@ -4,6 +4,8 @@ use crate::lex::lex_tokens;
 pub fn exec_line(line: String, line_no: u32) -> Result<(), &'static str> {
     let tokens = lex_tokens(line, line_no)?;
 
+    dbg!(tokens);
+
     Ok(())
 }
 

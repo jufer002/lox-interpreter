@@ -44,7 +44,7 @@ pub enum TokenType {
     True,
     Var,
     While,
-
+    // EOF
     EOF,
 }
 
@@ -119,12 +119,29 @@ fn lex_token(
             } else {
                 let next_char = maybe_next.unwrap();
                 if *next_char == '=' {
+                    iter.next().unwrap();
                     *curr_loc += 1;
                     Ok(Token::abstract_token(TokenType::BangEqual, "!=", line_no))
                 } else {
                     Ok(Token::abstract_token(TokenType::Bang, "!", line_no))
                 }
-            }            
+            }
+        },
+        '=' => {
+            // Check for BangEqual
+            let maybe_next = iter.peek();
+            if maybe_next.is_none() {
+                return Ok(Token::abstract_token(TokenType::Equal, "=", line_no));
+            } else {
+                let next_char = maybe_next.unwrap();
+                if *next_char == '=' {
+                    iter.next().unwrap();
+                    *curr_loc += 1;
+                    Ok(Token::abstract_token(TokenType::EqualEqual, "==", line_no))
+                } else {
+                    Ok(Token::abstract_token(TokenType::Equal, "=", line_no))
+                }
+            }
         },
 
         _ => Err("Failed to lex token"),
@@ -146,11 +163,13 @@ mod test_lex {
 
     #[test]
     fn test_lex_multi_char_tokens() {
-        let line = "!=".to_string();
+        let line = "{!=.".to_string();
         let tokens = lex_tokens(line.clone(), 1).unwrap();
 
-        // First token: BangEqual
-        // Second token: EOF
-        assert_eq!(2, tokens.len());
+        // First token: LeftBrace
+        // Second token: BangEqual
+        // Third token: Dot
+        // Last token: EOF
+        assert_eq!(4, tokens.len());
     }
 }

@@ -1,19 +1,20 @@
 use std::io::{stdin, BufRead, BufReader, Write, Read};
 use crate::interpreter::{exec_line, report_err};
 
-// Start a Lox REPL that will continually interpret lines until it receives the 'exit' command
+// Start a Lox REPL that will continually interpret lines until it receives the 'exit/quit' command
 pub fn run_repl() {
     let mut line_no: u32 = 1;
     loop {
         print_prompt(line_no);
         let line = read_line(stdin());
-        if line == "exit" {
+        if line == "exit" || line == "quit" {
             break;
+        } else {
+            exec_line(line, line_no).unwrap_or_else(|e| {
+                report_err(line_no, e);
+            });
         }
 
-        exec_line(line, line_no).unwrap_or_else(|e| {
-            report_err(line_no, e);
-        });
         line_no += 1;
     }
 }
