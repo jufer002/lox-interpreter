@@ -118,7 +118,7 @@ impl Lexer {
             self.lex_str()
         } else {
             // Parse an identifier
-            self.lex_identifier()
+            self.lex_identifier_or_kword()
         }
     }
 
@@ -243,7 +243,7 @@ impl Lexer {
         Ok(Token::new(TokenType::Lit(LitType::String(string_val))))
     }
 
-    fn lex_identifier(&mut self) -> Result<Token, String> {
+    fn lex_identifier_or_kword(&mut self) -> Result<Token, String> {
         let mut identifier: String = String::new();
 
         while let Some(c) = self.peek() {
@@ -316,5 +316,51 @@ mod test_lex {
         let tokens = lexer.lex_tokens().unwrap();
 
         assert_eq!(4, tokens.len());
+    }
+
+    #[test]
+    fn test_lex_str() {
+        // Try to lex a string and assert that it succeeds
+        let str = "\"hello\"";
+
+        let mut lexer = Lexer::new(str.to_string());
+        let tok = lexer.lex_str();
+
+        assert!(tok.is_ok());
+
+        // Try to lex a bad string and assert that it fails
+        let str = "\"hello";
+
+        let mut lexer = Lexer::new(str.to_string());
+        let tok = lexer.lex_str();
+
+        assert!(tok.is_err());
+    }
+
+    #[test]
+    fn test_lex_number() {
+        // Try to lex a string and assert that it succeeds
+        let num = "32.1";
+
+        let mut lexer = Lexer::new(num.to_string());
+        let tok = lexer.lex_num();
+
+        assert!(tok.is_ok());
+    }
+
+    #[test]
+    fn lex_kword() {
+        let kword = "var";
+        let mut lexer = Lexer::new(kword.to_string());
+        let tok = lexer.lex_identifier_or_kword().unwrap();
+        assert_eq!(TokenType::Kword(KwordType::Var), tok.token_type);
+    }
+
+    #[test]
+    fn lex_identifier() {
+        let identifier = "abc";
+        let mut lexer = Lexer::new(identifier.to_string());
+        let tok = lexer.lex_identifier_or_kword().unwrap();
+        assert_eq!(TokenType::Lit(LitType::Identifier(String::from("abc"))), tok.token_type);
     }
 }
