@@ -1,8 +1,6 @@
-use std::iter::Peekable;
 
 #[derive(Debug, PartialEq)]
-pub enum TokenType {
-    // Single-character tokens
+pub enum OpType {
     LeftParen,
     RightParen,
     LeftBrace,
@@ -14,7 +12,6 @@ pub enum TokenType {
     Semicolon,
     Slash,
     Star,
-    // One or two character tokens
     Bang,
     BangEqual,
     Equal,
@@ -23,11 +20,17 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
-    // Literals
-    Identifier,
-    String,
-    Number,
-    // Keywords
+}
+
+#[derive(Debug, PartialEq)]
+pub enum LitType {
+    Identifier(String),
+    String(String),
+    Number(f32),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum KwordType {
     And,
     Class,
     Else,
@@ -44,107 +47,261 @@ pub enum TokenType {
     True,
     Var,
     While,
-    // EOF
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TokenType {
+    Op(OpType),
+    Lit(LitType),
+    Kword(KwordType),
     EOF,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
     token_type: TokenType,
-    lexeme: String,
-    identifier: Option<String>,
-    line_no: u32,
 }
 
 impl Token {
-    // Return a new "abstract" token (non-literal)
-    fn abstract_token(token_type: TokenType, chr: &'static str, line_no: u32) -> Self {
-        Token {
-            token_type,
-            lexeme: chr.to_string(),
-            identifier: None,
-            line_no: line_no,
+    pub fn new(token_type: TokenType) -> Self {
+        Token { token_type }
+    }
+}
+
+pub struct Lexer {
+    line: Vec<char>,
+    position: usize,
+    curr_char: char,
+}
+
+impl Lexer {
+    pub fn new(line: String) -> Self {
+        let src_line: Vec<char> = line.trim().chars().collect();
+        let curr_char = src_line.clone().into_iter().next().unwrap();
+
+        Lexer {
+            line: src_line,
+            position: 0,
+            curr_char: curr_char,
         }
     }
-}
 
-// Get a list of tokens from a line of Lox source
-pub fn lex_tokens(line: String, line_no: u32) -> Result<Vec<Token>, &'static str> {
-    let mut curr_loc = 0;
-    let line_length = line.len();
-    // Create a vector which we'll fill with tokens
-    let mut tokens: Vec<Token> = vec![];
-    // Create an iterator over the line's chars
-    let mut chars = line.chars().into_iter().peekable();
+    pub fn lex_tokens(&mut self) -> Result<Vec<Token>, String> {
+        let mut tokens = vec![];
+        let src_size = self.line.len();
 
-    while curr_loc < line_length {
-        let next_token = lex_token(&mut curr_loc, &mut chars, line_no)?;
-        tokens.push(next_token);
+        while self.position < src_size {
+            tokens.push(self.lex_token()?);
+        }
+
+        tokens.push(Token::new(TokenType::EOF));
+
+        Ok(tokens)
     }
 
-    tokens.push(Token::abstract_token(TokenType::EOF, "", line_no));
+    fn lex_token(&mut self) -> Result<Token, String> {
 
-    Ok(tokens)
-}
+        while let Some(c) = self.peek() {
+            if c.is_whitespace() {
+                self.consume_char();
+            } else {
+                break;
+            }
+        }
 
-fn lex_token(
-    curr_loc: &mut usize,
-    iter: &mut Peekable<impl Iterator<Item = char>>,
-    line_no: u32,
-) -> Result<Token, &'static str> {
-    if let None = iter.peek() {
-        return Err("Failed to lex token");
+        if self.is_op_char() {
+            // Parse an operator
+            self.lex_op()
+        } else if self.is_num_char() {
+            // Parse a number
+            self.lex_num()
+        } else if self.peek().is_some() && self.peek().unwrap() == &'"' {
+            // Parse a string
+            self.lex_str()
+        } else {
+            // Parse an identifier
+            self.lex_identifier()
+        }
     }
 
-    let next_char = iter.next().unwrap();
-    *curr_loc += 1;
+    fn is_op_char(&self) -> bool {
+        if let Some(c) = self.peek() {
+            "(){},.-+;/*!=><".contains(c.clone())
+        } else {
+            false
+        }
+    }
 
-    match next_char {
-        '(' => Ok(Token::abstract_token(TokenType::LeftParen, "(", line_no)),
-        ')' => Ok(Token::abstract_token(TokenType::RightParen, ")", line_no)),
-        '{' => Ok(Token::abstract_token(TokenType::LeftBrace, "{", line_no)),
-        '}' => Ok(Token::abstract_token(TokenType::RightBrace, "}", line_no)),
-        ',' => Ok(Token::abstract_token(TokenType::Comma, ",", line_no)),
-        '.' => Ok(Token::abstract_token(TokenType::Dot, ".", line_no)),
-        '-' => Ok(Token::abstract_token(TokenType::Minus, "-", line_no)),
-        '+' => Ok(Token::abstract_token(TokenType::Plus, "+", line_no)),
-        ';' => Ok(Token::abstract_token(TokenType::Semicolon, ";", line_no)),
-        '/' => Ok(Token::abstract_token(TokenType::Slash, "/", line_no)),
-        '*' => Ok(Token::abstract_token(TokenType::Star, "*", line_no)),
-        '!' => {
-            // Check for BangEqual
-            let maybe_next = iter.peek();
-            if maybe_next.is_none() {
-                return Ok(Token::abstract_token(TokenType::Bang, "!", line_no));
-            } else {
-                let next_char = maybe_next.unwrap();
-                if *next_char == '=' {
-                    iter.next().unwrap();
-                    *curr_loc += 1;
-                    Ok(Token::abstract_token(TokenType::BangEqual, "!=", line_no))
-                } else {
-                    Ok(Token::abstract_token(TokenType::Bang, "!", line_no))
-                }
-            }
-        },
-        '=' => {
-            // Check for BangEqual
-            let maybe_next = iter.peek();
-            if maybe_next.is_none() {
-                return Ok(Token::abstract_token(TokenType::Equal, "=", line_no));
-            } else {
-                let next_char = maybe_next.unwrap();
-                if *next_char == '=' {
-                    iter.next().unwrap();
-                    *curr_loc += 1;
-                    Ok(Token::abstract_token(TokenType::EqualEqual, "==", line_no))
-                } else {
-                    Ok(Token::abstract_token(TokenType::Equal, "=", line_no))
-                }
-            }
-        },
+    fn is_num_char(&self) -> bool {
+        if let Some(c) = self.peek() {
+            c.is_numeric()
+        } else {
+            false
+        }
+    }
 
-        _ => Err("Failed to lex token"),
+    fn lex_op(&mut self) -> Result<Token, String> {
+        self.consume_char();
+        match self.curr_char {
+            // Handle single-char operators
+            '(' => Ok(Token::new(TokenType::Op(OpType::LeftParen))),
+            ')' => Ok(Token::new(TokenType::Op(OpType::RightParen))),
+            '{' => Ok(Token::new(TokenType::Op(OpType::LeftBrace))),
+            '}' => Ok(Token::new(TokenType::Op(OpType::RightBrace))),
+            ',' => Ok(Token::new(TokenType::Op(OpType::Comma))),
+            '.' => Ok(Token::new(TokenType::Op(OpType::Dot))),
+            '-' => Ok(Token::new(TokenType::Op(OpType::Minus))),
+            '+' => Ok(Token::new(TokenType::Op(OpType::Plus))),
+            ';' => Ok(Token::new(TokenType::Op(OpType::Semicolon))),
+            '/' => Ok(Token::new(TokenType::Op(OpType::Slash))),
+            '*' => Ok(Token::new(TokenType::Op(OpType::Star))),
+
+            // Handle multi-char operators
+            '!' => {
+                if let Some(next_char) = self.peek() {
+                    if next_char == &'=' {
+                        self.consume_char();
+                        return Ok(Token::new(TokenType::Op(OpType::BangEqual)));
+                    }
+                }
+
+                return Ok(Token::new(TokenType::Op(OpType::Bang)));
+            }
+            '=' => {
+                if let Some(next_char) = self.peek() {
+                    if next_char == &'=' {
+                        self.consume_char();
+                        return Ok(Token::new(TokenType::Op(OpType::EqualEqual)));
+                    }
+                }
+
+                return Ok(Token::new(TokenType::Op(OpType::Equal)));
+            }
+            '>' => {
+                if let Some(next_char) = self.peek() {
+                    if next_char == &'=' {
+                        self.consume_char();
+                        return Ok(Token::new(TokenType::Op(OpType::GreaterEqual)));
+                    }
+                }
+
+                return Ok(Token::new(TokenType::Op(OpType::Greater)));
+            }
+            '<' => {
+                if let Some(next_char) = self.peek() {
+                    if next_char == &'=' {
+                        self.consume_char();
+                        return Ok(Token::new(TokenType::Op(OpType::LessEqual)));
+                    }
+                }
+
+                return Ok(Token::new(TokenType::Op(OpType::Less)));
+            }
+
+            _ => Err("Failed to parse token".to_string()),
+        }
+    }
+
+    fn lex_num(&mut self) -> Result<Token, String> {
+        let mut digits: String = String::new();
+
+        while let Some(c) = self.peek() {
+            
+            if c.is_numeric() || c == &'.' {
+                digits.push(c.clone());
+                self.consume_char();
+            } else {
+                break;
+            }
+        }
+
+        Ok(Token::new(TokenType::Lit(LitType::Number(
+            digits.parse::<f32>().unwrap(),
+        ))))
+    }
+
+    fn lex_str(&mut self) -> Result<Token, String> {
+        let mut string_val = String::new();
+
+        // Consume the quote character
+        self.consume_char();
+
+        // Consume string
+        while let Some(c) = self.peek() {
+            if c == &'"' {
+                break;
+            }
+
+            string_val.push(c.clone());
+            self.consume_char();
+        }
+
+        if self.peek().is_none() {
+            return Err("Expected quote to be closed".to_string());
+        }
+
+        // Consume the second quote character
+        self.consume_char();
+
+        Ok(Token::new(TokenType::Lit(LitType::String(string_val))))
+    }
+
+    fn lex_identifier(&mut self) -> Result<Token, String> {
+        let mut identifier: String = String::new();
+
+        while let Some(c) = self.peek() {
+            
+            if c.is_alphabetic() {
+                identifier.push(c.clone());
+                self.consume_char();
+            } else {
+                break;
+            }
+        }
+
+        let maybe_kword_type = self.str_to_keyword_type(&identifier);
+        if maybe_kword_type.is_some() {
+            Ok(Token::new(TokenType::Kword(maybe_kword_type.unwrap())))
+        } else {
+            Ok(Token::new(TokenType::Lit(LitType::Identifier(identifier))))
+        }
+    }
+
+    fn str_to_keyword_type(&self, maybe_kword: &String) -> Option<KwordType> {
+        let kword_type = match maybe_kword.as_str() {
+            "and" => KwordType::And,
+            "class" => KwordType::Class,
+            "else" => KwordType::Else,
+            "false" => KwordType::False,
+            "fun" => KwordType::Fun,
+            "for" => KwordType::For,
+            "if" => KwordType::If,
+            "nil" => KwordType::Nil,
+            "or" => KwordType::Or,
+            "print" => KwordType::Print,
+            "return" => KwordType::Return,
+            "super" => KwordType::Super,
+            "this" => KwordType::This,
+            "true" => KwordType::True,
+            "var" => KwordType::Var,
+            "while" => KwordType::While,
+            _ => {
+                return None;
+            },
+        };
+
+        Some(kword_type)
+    }
+
+    // Return the next char in the line, consuming it.
+    // This function assumes boundary checks have already been done.
+    fn consume_char(&mut self) {
+        self.curr_char = self.line.get(self.position).unwrap().clone();
+        self.position += 1;
+    }
+
+    fn peek(&self) -> Option<&char> {
+        self.line.get(self.position).clone()
     }
 }
 
@@ -153,23 +310,16 @@ mod test_lex {
     use super::*;
 
     #[test]
-    fn test_lex_single_char_tokens() {
-        let line = "(){},.-+;/*!!!".to_string();
-        let tokens = lex_tokens(line.clone(), 1).unwrap();
+    fn test_lex_tokens() {
 
-        // We'll have line.len() + 1 tokens because an EOF token is included
-        assert_eq!(line.len() + 1, tokens.len());
-    }
+        let mut lexer = Lexer::new("var myVar = 5;".to_string());
+        let tokens = lexer.lex_tokens().unwrap();
 
-    #[test]
-    fn test_lex_multi_char_tokens() {
-        let line = "{!=.".to_string();
-        let tokens = lex_tokens(line.clone(), 1).unwrap();
+        assert_eq!(6, tokens.len());
 
-        // First token: LeftBrace
-        // Second token: BangEqual
-        // Third token: Dot
-        // Last token: EOF
+        let mut lexer = Lexer::new("print \"hello\";".to_string());
+        let tokens = lexer.lex_tokens().unwrap();
+
         assert_eq!(4, tokens.len());
     }
 }

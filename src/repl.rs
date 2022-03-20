@@ -10,8 +10,8 @@ pub fn run_repl() {
         if line == "exit" || line == "quit" {
             break;
         } else {
-            exec_line(line, line_no).unwrap_or_else(|e| {
-                report_err(line_no, e);
+            exec_line(line).unwrap_or_else(|e| {
+                report_err(line_no, e.as_str());
             });
         }
 

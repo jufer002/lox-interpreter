@@ -1,8 +1,11 @@
-use crate::lex::lex_tokens;
+use crate::lex::Lexer;
+
 
 // Execute a line of lox
-pub fn exec_line(line: String, line_no: u32) -> Result<(), &'static str> {
-    let tokens = lex_tokens(line, line_no)?;
+pub fn exec_line(line: String) -> Result<(), String> {
+    let mut lexer = Lexer::new(line);
+
+    let tokens = lexer.lex_tokens()?;
 
     dbg!(tokens);
 
