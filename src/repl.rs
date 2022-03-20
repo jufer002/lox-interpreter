@@ -1,5 +1,5 @@
-use std::io::{stdin, BufRead, BufReader, Write, Read};
 use crate::interpreter::{exec_line, report_err};
+use std::io::{stdin, BufRead, BufReader, Read, Write};
 
 // Start a Lox REPL that will continually interpret lines until it receives the 'exit/quit' command
 pub fn run_repl() {
@@ -33,7 +33,7 @@ fn read_line(read_src: impl Read) -> String {
     // Strip CRLF or LF
     buffer
         .strip_suffix("\r\n")
-        .or(buffer.strip_suffix("\n"))
+        .or_else(|| buffer.strip_suffix('\n'))
         .unwrap_or(buffer.as_str())
         .to_string()
 }
@@ -44,17 +44,13 @@ mod test_repl {
 
     #[test]
     fn test_read_line() {
-        let inputs = vec![
-            "abc\r\n",
-            "abc\n",
-            "abc"
-        ];
+        let inputs = vec!["abc\r\n", "abc\n", "abc"];
 
         for input in inputs {
             let abc = read_line(input.as_bytes());
             assert_eq!("abc", abc);
         }
-        
+
         // Test that reading an empty line is ok
         read_line("".as_bytes());
     }

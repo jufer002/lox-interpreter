@@ -1,6 +1,6 @@
 mod interpreter;
-mod repl;
 mod lex;
+mod repl;
 
 use std::{env, fs};
 
@@ -18,7 +18,9 @@ fn main() {
 
 fn run_script(script_path: &str) {
     let script_str = fs::read_to_string(script_path)
-        .expect(format!("Failed to read input file [{}]", script_path).as_str());
+        .unwrap_or_else(|e| {
+            panic!("Failed to read input file {}: {}", script_path, e)
+        });
 
     println!("{}", script_str);
 }

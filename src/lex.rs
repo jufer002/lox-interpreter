@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq)]
 pub enum OpType {
     LeftParen,
@@ -54,7 +53,7 @@ pub enum TokenType {
     Op(OpType),
     Lit(LitType),
     Kword(KwordType),
-    EOF,
+    Eof,
 }
 
 #[derive(Debug, PartialEq)]
@@ -82,7 +81,7 @@ impl Lexer {
         Lexer {
             line: src_line,
             position: 0,
-            curr_char: curr_char,
+            curr_char,
         }
     }
 
@@ -94,13 +93,12 @@ impl Lexer {
             tokens.push(self.lex_token()?);
         }
 
-        tokens.push(Token::new(TokenType::EOF));
+        tokens.push(Token::new(TokenType::Eof));
 
         Ok(tokens)
     }
 
     fn lex_token(&mut self) -> Result<Token, String> {
-
         while let Some(c) = self.peek() {
             if c.is_whitespace() {
                 self.consume_char();
@@ -126,7 +124,7 @@ impl Lexer {
 
     fn is_op_char(&self) -> bool {
         if let Some(c) = self.peek() {
-            "(){},.-+;/*!=><".contains(c.clone())
+            "(){},.-+;/*!=><".contains(*c)
         } else {
             false
         }
@@ -165,7 +163,7 @@ impl Lexer {
                     }
                 }
 
-                return Ok(Token::new(TokenType::Op(OpType::Bang)));
+                Ok(Token::new(TokenType::Op(OpType::Bang)))
             }
             '=' => {
                 if let Some(next_char) = self.peek() {
@@ -175,7 +173,7 @@ impl Lexer {
                     }
                 }
 
-                return Ok(Token::new(TokenType::Op(OpType::Equal)));
+                Ok(Token::new(TokenType::Op(OpType::Equal)))
             }
             '>' => {
                 if let Some(next_char) = self.peek() {
@@ -185,7 +183,7 @@ impl Lexer {
                     }
                 }
 
-                return Ok(Token::new(TokenType::Op(OpType::Greater)));
+                Ok(Token::new(TokenType::Op(OpType::Greater)))
             }
             '<' => {
                 if let Some(next_char) = self.peek() {
@@ -195,7 +193,7 @@ impl Lexer {
                     }
                 }
 
-                return Ok(Token::new(TokenType::Op(OpType::Less)));
+                Ok(Token::new(TokenType::Op(OpType::Less)))
             }
 
             _ => Err("Failed to parse token".to_string()),
@@ -206,9 +204,8 @@ impl Lexer {
         let mut digits: String = String::new();
 
         while let Some(c) = self.peek() {
-            
             if c.is_numeric() || c == &'.' {
-                digits.push(c.clone());
+                digits.push(*c);
                 self.consume_char();
             } else {
                 break;
@@ -232,12 +229,12 @@ impl Lexer {
                 break;
             }
 
-            string_val.push(c.clone());
+            string_val.push(*c);
             self.consume_char();
         }
 
         if self.peek().is_none() {
-            return Err("Expected quote to be closed".to_string());
+            return Err("Unclosed quotation".to_string());
         }
 
         // Consume the second quote character
@@ -250,9 +247,8 @@ impl Lexer {
         let mut identifier: String = String::new();
 
         while let Some(c) = self.peek() {
-            
             if c.is_alphabetic() {
-                identifier.push(c.clone());
+                identifier.push(*c);
                 self.consume_char();
             } else {
                 break;
@@ -260,15 +256,15 @@ impl Lexer {
         }
 
         let maybe_kword_type = self.str_to_keyword_type(&identifier);
-        if maybe_kword_type.is_some() {
-            Ok(Token::new(TokenType::Kword(maybe_kword_type.unwrap())))
+        if let Some(kword_type) = maybe_kword_type {
+            Ok(Token::new(TokenType::Kword(kword_type)))
         } else {
             Ok(Token::new(TokenType::Lit(LitType::Identifier(identifier))))
         }
     }
 
-    fn str_to_keyword_type(&self, maybe_kword: &String) -> Option<KwordType> {
-        let kword_type = match maybe_kword.as_str() {
+    fn str_to_keyword_type(&self, maybe_kword: &str) -> Option<KwordType> {
+        let kword_type = match maybe_kword {
             "and" => KwordType::And,
             "class" => KwordType::Class,
             "else" => KwordType::Else,
@@ -287,7 +283,7 @@ impl Lexer {
             "while" => KwordType::While,
             _ => {
                 return None;
-            },
+            }
         };
 
         Some(kword_type)
@@ -296,12 +292,12 @@ impl Lexer {
     // Return the next char in the line, consuming it.
     // This function assumes boundary checks have already been done.
     fn consume_char(&mut self) {
-        self.curr_char = self.line.get(self.position).unwrap().clone();
+        self.curr_char = *self.line.get(self.position).unwrap();
         self.position += 1;
     }
 
     fn peek(&self) -> Option<&char> {
-        self.line.get(self.position).clone()
+        self.line.get(self.position)
     }
 }
 
@@ -311,7 +307,6 @@ mod test_lex {
 
     #[test]
     fn test_lex_tokens() {
-
         let mut lexer = Lexer::new("var myVar = 5;".to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
