@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
     // Single-character tokens
@@ -67,15 +69,16 @@ impl Token {
 }
 
 // Get a list of tokens from a line of Lox source
-pub fn lex_tokens(line: String) -> Result<Vec<Token>, &'static str> {
-    let mut line_no = 1;
+pub fn lex_tokens(line: String, line_no: u32) -> Result<Vec<Token>, &'static str> {
     let mut curr_loc = 0;
     let line_length = line.len();
+    // Create a vector which we'll fill with tokens
     let mut tokens: Vec<Token> = vec![];
-    let chars: Vec<_> = line.chars().collect();
+    // Create an iterator over the line's chars
+    let mut chars = line.chars().into_iter().peekable();
 
     while curr_loc < line_length {
-        let next_token = lex_token(&mut curr_loc, &chars, line_no)?;
+        let next_token = lex_token(&mut curr_loc, &mut chars, line_no)?;
         tokens.push(next_token);
     }
 
@@ -84,8 +87,16 @@ pub fn lex_tokens(line: String) -> Result<Vec<Token>, &'static str> {
     Ok(tokens)
 }
 
-fn lex_token(curr_loc: &mut usize, line: &Vec<char>, line_no: u32) -> Result<Token, &'static str> {
-    let next_char: char = *line.get(*curr_loc).unwrap();
+fn lex_token(
+    curr_loc: &mut usize,
+    iter: &mut Peekable<impl Iterator<Item = char>>,
+    line_no: u32,
+) -> Result<Token, &'static str> {
+    if let None = iter.peek() {
+        return Err("Failed to lex token");
+    }
+
+    let next_char = iter.next().unwrap();
     *curr_loc += 1;
 
     match next_char {
@@ -100,32 +111,46 @@ fn lex_token(curr_loc: &mut usize, line: &Vec<char>, line_no: u32) -> Result<Tok
         ';' => Ok(Token::abstract_token(TokenType::Semicolon, ";", line_no)),
         '/' => Ok(Token::abstract_token(TokenType::Slash, "/", line_no)),
         '*' => Ok(Token::abstract_token(TokenType::Star, "*", line_no)),
-
-        _ => {
-            Err("Failed to lex token")
+        '!' => {
+            // Check for BangEqual
+            let maybe_next = iter.peek();
+            if maybe_next.is_none() {
+                return Ok(Token::abstract_token(TokenType::Bang, "!", line_no));
+            } else {
+                let next_char = maybe_next.unwrap();
+                if *next_char == '=' {
+                    *curr_loc += 1;
+                    Ok(Token::abstract_token(TokenType::BangEqual, "!=", line_no))
+                } else {
+                    Ok(Token::abstract_token(TokenType::Bang, "!", line_no))
+                }
+            }            
         },
+
+        _ => Err("Failed to lex token"),
     }
 }
-
 
 #[cfg(test)]
 mod test_lex {
     use super::*;
 
     #[test]
-    fn test_lex_token() {
-        let mut curr_loc = 0;
-        let line_no = 1;
-        let token = lex_token(&mut curr_loc, &",".to_string().chars().collect(), line_no).unwrap();
-        assert_eq!(token.token_type, TokenType::Comma);
-    }
-
-    #[test]
     fn test_lex_single_char_tokens() {
-        let line = "(){},.-+;/*".to_string();
-        let tokens = lex_tokens(line.clone()).unwrap();
+        let line = "(){},.-+;/*!!!".to_string();
+        let tokens = lex_tokens(line.clone(), 1).unwrap();
 
         // We'll have line.len() + 1 tokens because an EOF token is included
         assert_eq!(line.len() + 1, tokens.len());
+    }
+
+    #[test]
+    fn test_lex_multi_char_tokens() {
+        let line = "!=".to_string();
+        let tokens = lex_tokens(line.clone(), 1).unwrap();
+
+        // First token: BangEqual
+        // Second token: EOF
+        assert_eq!(2, tokens.len());
     }
 }

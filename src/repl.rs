@@ -1,22 +1,26 @@
 use std::io::{stdin, BufRead, BufReader, Write, Read};
-use crate::interpreter::exec_line;
+use crate::interpreter::{exec_line, report_err};
 
 // Start a Lox REPL that will continually interpret lines until it receives the 'exit' command
 pub fn run_repl() {
+    let mut line_no: u32 = 1;
     loop {
-        print_prompt();
+        print_prompt(line_no);
         let line = read_line(stdin());
         if line == "exit" {
             break;
         }
 
-        exec_line(line);
+        exec_line(line, line_no).unwrap_or_else(|e| {
+            report_err(line_no, e);
+        });
+        line_no += 1;
     }
 }
 
 // Print a prompt to the user and flush stdout
-fn print_prompt() {
-    print!("[🦀 lox] > ");
+fn print_prompt(line_no: u32) {
+    print!("[🦀 lox] [{}] > ", line_no);
     std::io::stdout().flush().unwrap();
 }
 
