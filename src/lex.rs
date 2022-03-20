@@ -247,9 +247,12 @@ impl Lexer {
         let mut identifier: String = String::new();
 
         while let Some(c) = self.peek() {
-            if c.is_alphabetic() {
+            if c.is_alphanumeric() {
                 identifier.push(*c);
                 self.consume_char();
+            } else if !c.is_whitespace() {
+                identifier.push(*c);
+                return Err(format!("Invalid character in identifier {}: {}", identifier, *c));
             } else {
                 break;
             }
@@ -358,9 +361,31 @@ mod test_lex {
 
     #[test]
     fn lex_identifier() {
-        let identifier = "abc";
-        let mut lexer = Lexer::new(identifier.to_string());
-        let tok = lexer.lex_identifier_or_kword().unwrap();
-        assert_eq!(TokenType::Lit(LitType::Identifier(String::from("abc"))), tok.token_type);
+
+        // Define a list of strings paired with whether they're valid
+        let test_inputs = vec![
+            // Valid identifiers
+            ("abc", true),
+            ("a123", true),
+            ("bcc2dd", true),
+            // Invalid identifiers
+            ("abc@", false),
+            ("abc.", false),
+            ("@#aa", false),
+        ];
+
+        // Run tests for each input
+        for (identifier, is_valid) in test_inputs {
+            let mut lexer = Lexer::new(identifier.to_string());
+            let result = lexer.lex_identifier_or_kword();
+            if is_valid {
+                // Assert the success type of lexing valid identifiers 
+                let tok = result.unwrap();
+                assert_eq!(TokenType::Lit(LitType::Identifier(String::from(identifier))), tok.token_type);
+            } else {
+                // Assert that an error occurs when lexing invalid identifiers
+                assert!(result.is_err());
+            }
+        }
     }
 }
