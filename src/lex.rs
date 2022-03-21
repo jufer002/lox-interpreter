@@ -68,18 +68,18 @@ impl Token {
     }
 }
 
-pub struct Lexer {
+pub struct LineLexer {
     line: Vec<char>,
     position: usize,
     curr_char: char,
 }
 
-impl Lexer {
+impl LineLexer {
     pub fn new(line: String) -> Self {
         let src_line: Vec<char> = line.trim().chars().collect();
         let curr_char = src_line.clone().into_iter().next().unwrap_or('\0');
 
-        Lexer {
+        LineLexer {
             line: src_line,
             position: 0,
             curr_char,
@@ -334,17 +334,17 @@ mod test_lex {
 
     #[test]
     fn test_lex_tokens() {
-        let mut lexer = Lexer::new("var myVar = 5;".to_string());
+        let mut lexer = LineLexer::new("var myVar = 5;".to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
         assert_eq!(6, tokens.len());
 
-        let mut lexer = Lexer::new("print \"hello\";".to_string());
+        let mut lexer = LineLexer::new("print \"hello\";".to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
         assert_eq!(4, tokens.len());
 
-        let mut lexer = Lexer::new("a*5".to_string());
+        let mut lexer = LineLexer::new("a*5".to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
         assert_eq!(4, tokens.len());
@@ -355,7 +355,7 @@ mod test_lex {
         // Try to lex a string and assert that it succeeds
         let str = "\"hello\"";
 
-        let mut lexer = Lexer::new(str.to_string());
+        let mut lexer = LineLexer::new(str.to_string());
         let tok = lexer.lex_str();
 
         assert!(tok.is_ok());
@@ -363,7 +363,7 @@ mod test_lex {
         // Try to lex a bad string and assert that it fails
         let str = "\"hello";
 
-        let mut lexer = Lexer::new(str.to_string());
+        let mut lexer = LineLexer::new(str.to_string());
         let tok = lexer.lex_str();
 
         assert!(tok.is_err());
@@ -374,7 +374,7 @@ mod test_lex {
         // Try to lex a string and assert that it succeeds
         let num = "32.1";
 
-        let mut lexer = Lexer::new(num.to_string());
+        let mut lexer = LineLexer::new(num.to_string());
         let tok = lexer.lex_num();
 
         assert!(tok.is_ok());
@@ -383,7 +383,7 @@ mod test_lex {
     #[test]
     fn lex_kword() {
         let kword = "var";
-        let mut lexer = Lexer::new(kword.to_string());
+        let mut lexer = LineLexer::new(kword.to_string());
         let tok = lexer.lex_identifier_or_kword().unwrap();
         assert_eq!(TokenType::Kword(KwordType::Var), tok.token_type);
     }
@@ -404,7 +404,7 @@ mod test_lex {
 
         // Run tests for each input
         for (identifier, is_valid) in test_inputs {
-            let mut lexer = Lexer::new(identifier.to_string());
+            let mut lexer = LineLexer::new(identifier.to_string());
             let result = lexer.lex_identifier_or_kword();
             if is_valid {
                 // Assert the success type of lexing valid identifiers 
@@ -420,7 +420,7 @@ mod test_lex {
     #[test]
     fn lex_comment() {
         let src = "var // this is a comment";
-        let mut lexer = Lexer::new(src.to_string());
+        let mut lexer = LineLexer::new(src.to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
         // Two tokens: var, EOF
@@ -430,7 +430,7 @@ mod test_lex {
     #[test]
     fn test_empty() {
         let src = "";
-        let mut lexer = Lexer::new(src.to_string());
+        let mut lexer = LineLexer::new(src.to_string());
         let tokens = lexer.lex_tokens().unwrap();
 
         // Only EOF token should be present
