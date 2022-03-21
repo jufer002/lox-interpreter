@@ -10,6 +10,7 @@ pub enum OpType {
     Plus,
     Semicolon,
     Slash,
+    SlashSlash,
     Star,
     Bang,
     BangEqual,
@@ -76,7 +77,7 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(line: String) -> Self {
         let src_line: Vec<char> = line.trim().chars().collect();
-        let curr_char = src_line.clone().into_iter().next().unwrap();
+        let curr_char = src_line.clone().into_iter().next().unwrap_or('\0');
 
         Lexer {
             line: src_line,
@@ -90,7 +91,14 @@ impl Lexer {
         let src_size = self.line.len();
 
         while self.position < src_size {
-            tokens.push(self.lex_token()?);
+            let token = self.lex_token()?;
+
+            // Ignore comments
+            if token.token_type == TokenType::Op(OpType::SlashSlash) {
+                continue;
+            }
+
+            tokens.push(token);
         }
 
         tokens.push(Token::new(TokenType::Eof));
@@ -99,6 +107,7 @@ impl Lexer {
     }
 
     fn lex_token(&mut self) -> Result<Token, String> {
+        
         while let Some(c) = self.peek() {
             if c.is_whitespace() {
                 self.consume_char();
@@ -151,7 +160,6 @@ impl Lexer {
             '-' => Ok(Token::new(TokenType::Op(OpType::Minus))),
             '+' => Ok(Token::new(TokenType::Op(OpType::Plus))),
             ';' => Ok(Token::new(TokenType::Op(OpType::Semicolon))),
-            '/' => Ok(Token::new(TokenType::Op(OpType::Slash))),
             '*' => Ok(Token::new(TokenType::Op(OpType::Star))),
 
             // Handle multi-char operators
@@ -164,7 +172,7 @@ impl Lexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Bang)))
-            }
+            },
             '=' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -174,7 +182,7 @@ impl Lexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Equal)))
-            }
+            },
             '>' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -184,7 +192,7 @@ impl Lexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Greater)))
-            }
+            },
             '<' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -194,7 +202,23 @@ impl Lexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Less)))
-            }
+            },
+            // Handle comments
+            '/' => {
+                if let Some(next_char) = self.peek() {
+                    if next_char == &'/' {
+
+                        // Consume the rest of the source
+                        while let Some(_next_char) = self.peek() {
+                            self.consume_char();
+                        }
+
+                        return Ok(Token::new(TokenType::Op(OpType::SlashSlash)));
+                    }
+                }
+
+                Ok(Token::new(TokenType::Op(OpType::Slash)))
+            },
 
             _ => Err("Failed to parse token".to_string()),
         }
@@ -250,7 +274,7 @@ impl Lexer {
             if c.is_alphanumeric() {
                 identifier.push(*c);
                 self.consume_char();
-            } else if !c.is_whitespace() {
+            } else if !c.is_whitespace() && !self.is_op_char() {
                 identifier.push(*c);
                 return Err(format!("Invalid character in identifier {}: {}", identifier, *c));
             } else {
@@ -319,6 +343,11 @@ mod test_lex {
         let tokens = lexer.lex_tokens().unwrap();
 
         assert_eq!(4, tokens.len());
+
+        let mut lexer = Lexer::new("a*5".to_string());
+        let tokens = lexer.lex_tokens().unwrap();
+
+        assert_eq!(4, tokens.len());
     }
 
     #[test]
@@ -370,7 +399,6 @@ mod test_lex {
             ("bcc2dd", true),
             // Invalid identifiers
             ("abc@", false),
-            ("abc.", false),
             ("@#aa", false),
         ];
 
@@ -387,5 +415,25 @@ mod test_lex {
                 assert!(result.is_err());
             }
         }
+    }
+
+    #[test]
+    fn lex_comment() {
+        let src = "var // this is a comment";
+        let mut lexer = Lexer::new(src.to_string());
+        let tokens = lexer.lex_tokens().unwrap();
+
+        // Two tokens: var, EOF
+        assert_eq!(2, tokens.len());
+    }
+
+    #[test]
+    fn test_empty() {
+        let src = "";
+        let mut lexer = Lexer::new(src.to_string());
+        let tokens = lexer.lex_tokens().unwrap();
+
+        // Only EOF token should be present
+        assert_eq!(1, tokens.len());
     }
 }
