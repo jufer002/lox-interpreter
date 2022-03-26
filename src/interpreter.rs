@@ -4,7 +4,7 @@ use crate::lex::LineLexer;
 pub fn exec_line(line: String) -> Result<(), String> {
     let mut lexer = LineLexer::new(line);
 
-    let tokens = lexer.lex_tokens()?;
+    let tokens = lexer.lex_tokens();
 
     dbg!(tokens);
 

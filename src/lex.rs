@@ -86,28 +86,29 @@ impl LineLexer {
         }
     }
 
-    pub fn lex_tokens(&mut self) -> Result<Vec<Token>, String> {
-        let mut tokens = vec![];
+    pub fn lex_tokens(&mut self) -> Vec<Result<Token, String>> {
+        let mut tokens = Vec::new();
         let src_size = self.line.len();
 
         while self.position < src_size {
-            let token = self.lex_token()?;
+            let token = self.lex_token();
 
             // Ignore comments
-            if token.token_type == TokenType::Op(OpType::SlashSlash) {
+            if token.is_ok()
+                && token.as_ref().unwrap().token_type == TokenType::Op(OpType::SlashSlash)
+            {
                 continue;
             }
 
             tokens.push(token);
         }
 
-        tokens.push(Token::new(TokenType::Eof));
+        tokens.push(Ok(Token::new(TokenType::Eof)));
 
-        Ok(tokens)
+        tokens
     }
 
     fn lex_token(&mut self) -> Result<Token, String> {
-        
         while let Some(c) = self.peek() {
             if c.is_whitespace() {
                 self.consume_char();
@@ -172,7 +173,7 @@ impl LineLexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Bang)))
-            },
+            }
             '=' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -182,7 +183,7 @@ impl LineLexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Equal)))
-            },
+            }
             '>' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -192,7 +193,7 @@ impl LineLexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Greater)))
-            },
+            }
             '<' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'=' {
@@ -202,12 +203,11 @@ impl LineLexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Less)))
-            },
+            }
             // Handle comments
             '/' => {
                 if let Some(next_char) = self.peek() {
                     if next_char == &'/' {
-
                         // Consume the rest of the source
                         while let Some(_next_char) = self.peek() {
                             self.consume_char();
@@ -218,7 +218,7 @@ impl LineLexer {
                 }
 
                 Ok(Token::new(TokenType::Op(OpType::Slash)))
-            },
+            }
 
             _ => Err("Failed to parse token".to_string()),
         }
@@ -275,8 +275,13 @@ impl LineLexer {
                 identifier.push(*c);
                 self.consume_char();
             } else if !c.is_whitespace() && !self.is_op_char() {
-                identifier.push(*c);
-                return Err(format!("Invalid character in identifier {}: {}", identifier, *c));
+                let illegal_ch = c.clone();
+                identifier.push(illegal_ch);
+                self.consume_char();
+                return Err(format!(
+                    "Invalid character in identifier {}: {}",
+                    identifier, illegal_ch
+                ));
             } else {
                 break;
             }
@@ -335,17 +340,17 @@ mod test_lex {
     #[test]
     fn test_lex_tokens() {
         let mut lexer = LineLexer::new("var myVar = 5;".to_string());
-        let tokens = lexer.lex_tokens().unwrap();
+        let tokens = lexer.lex_tokens();
 
         assert_eq!(6, tokens.len());
 
         let mut lexer = LineLexer::new("print \"hello\";".to_string());
-        let tokens = lexer.lex_tokens().unwrap();
+        let tokens = lexer.lex_tokens();
 
         assert_eq!(4, tokens.len());
 
         let mut lexer = LineLexer::new("a*5".to_string());
-        let tokens = lexer.lex_tokens().unwrap();
+        let tokens = lexer.lex_tokens();
 
         assert_eq!(4, tokens.len());
     }
@@ -390,7 +395,6 @@ mod test_lex {
 
     #[test]
     fn lex_identifier() {
-
         // Define a list of strings paired with whether they're valid
         let test_inputs = vec![
             // Valid identifiers
@@ -407,9 +411,12 @@ mod test_lex {
             let mut lexer = LineLexer::new(identifier.to_string());
             let result = lexer.lex_identifier_or_kword();
             if is_valid {
-                // Assert the success type of lexing valid identifiers 
+                // Assert the success type of lexing valid identifiers
                 let tok = result.unwrap();
-                assert_eq!(TokenType::Lit(LitType::Identifier(String::from(identifier))), tok.token_type);
+                assert_eq!(
+                    TokenType::Lit(LitType::Identifier(String::from(identifier))),
+                    tok.token_type
+                );
             } else {
                 // Assert that an error occurs when lexing invalid identifiers
                 assert!(result.is_err());
@@ -421,7 +428,7 @@ mod test_lex {
     fn lex_comment() {
         let src = "var // this is a comment";
         let mut lexer = LineLexer::new(src.to_string());
-        let tokens = lexer.lex_tokens().unwrap();
+        let tokens = lexer.lex_tokens();
 
         // Two tokens: var, EOF
         assert_eq!(2, tokens.len());
@@ -431,9 +438,19 @@ mod test_lex {
     fn test_empty() {
         let src = "";
         let mut lexer = LineLexer::new(src.to_string());
-        let tokens = lexer.lex_tokens().unwrap();
+        let tokens = lexer.lex_tokens();
 
         // Only EOF token should be present
         assert_eq!(1, tokens.len());
+    }
+
+    #[test]
+    fn test_illegal_char() {
+        let src = "illegal?";
+        let mut lexer = LineLexer::new(src.to_string());
+        let tokens = lexer.lex_tokens();
+
+        assert_eq!(2, tokens.len());
+        assert!(tokens.get(0).unwrap().is_err());
     }
 }

@@ -18,9 +18,7 @@ fn main() {
 
 fn run_script(script_path: &str) {
     let script_str = fs::read_to_string(script_path)
-        .unwrap_or_else(|e| {
-            panic!("Failed to read input file {}: {}", script_path, e)
-        });
+        .unwrap_or_else(|e| panic!("Failed to read input file {}: {}", script_path, e));
 
     println!("{}", script_str);
 }
