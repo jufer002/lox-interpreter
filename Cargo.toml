@@ -2,6 +2,7 @@
 edition = "2021"
 name = "lox-interpreter"
 version = "0.1.0"
+default-run = "rlox"
 
 [[bin]]
 name = "rlox"

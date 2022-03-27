@@ -1,3 +1,5 @@
 pub mod interpreter;
-pub mod lex;
+pub mod lexer;
 pub mod repl;
+#[allow(dead_code)]
+pub mod parser;

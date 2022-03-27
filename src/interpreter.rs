@@ -1,4 +1,4 @@
-use crate::lex::LineLexer;
+use crate::lexer::LineLexer;
 
 // Execute a line of lox
 pub fn exec_line(line: String) -> Result<(), String> {

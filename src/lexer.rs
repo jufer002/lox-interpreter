@@ -22,11 +22,48 @@ pub enum OpType {
     LessEqual,
 }
 
+impl ToString for OpType {
+    fn to_string(&self) -> String {
+        match self {
+            OpType::LeftParen => '('.to_string(),
+            OpType::RightParen => ')'.to_string(),
+            OpType::LeftBrace => '{'.to_string(),
+            OpType::RightBrace => '}'.to_string(),
+            OpType::Comma => ','.to_string(),
+            OpType::Dot => '.'.to_string(),
+            OpType::Minus => '-'.to_string(),
+            OpType::Plus => '+'.to_string(),
+            OpType::Semicolon => ';'.to_string(),
+            OpType::Slash => '/'.to_string(),
+            OpType::SlashSlash => "//".to_string(),
+            OpType::Star => '*'.to_string(),
+            OpType::Bang => '!'.to_string(),
+            OpType::BangEqual => "!=".to_string(),
+            OpType::Equal => '='.to_string(),
+            OpType::EqualEqual => "==".to_string(),
+            OpType::Greater => '>'.to_string(),
+            OpType::GreaterEqual => ">=".to_string(),
+            OpType::Less => '<'.to_string(),
+            OpType::LessEqual => "<=".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum LitType {
     Identifier(String),
     String(String),
     Number(f32),
+}
+
+impl ToString for LitType {
+    fn to_string(&self) -> String {
+        match self {
+            LitType::Identifier(ref name) => String::from(name),
+            LitType::String(ref s) => String::from(s),
+            LitType::Number(ref x) => String::from(x.to_string()),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -59,7 +96,7 @@ pub enum TokenType {
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    token_type: TokenType,
+    pub token_type: TokenType,
 }
 
 impl Token {
@@ -275,7 +312,7 @@ impl LineLexer {
                 identifier.push(*c);
                 self.consume_char();
             } else if !c.is_whitespace() && !self.is_op_char() {
-                let illegal_ch = c.clone();
+                let illegal_ch = *c;
                 identifier.push(illegal_ch);
                 self.consume_char();
                 return Err(format!(
@@ -334,7 +371,7 @@ impl LineLexer {
 }
 
 #[cfg(test)]
-mod test_lex {
+mod test_lexer {
     use super::*;
 
     #[test]

@@ -1,5 +1,5 @@
 mod interpreter;
-mod lex;
+mod lexer;
 mod repl;
 
 use std::{env, fs};
