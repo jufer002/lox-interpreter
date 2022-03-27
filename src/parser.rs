@@ -1,4 +1,4 @@
-use crate::lexer::{LitType, OpType, Token, TokenType};
+use crate::lexer::{LitType, OpType};
 
 #[derive(Debug)]
 pub enum Expr {

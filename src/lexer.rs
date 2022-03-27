@@ -61,7 +61,7 @@ impl ToString for LitType {
         match self {
             LitType::Identifier(ref name) => String::from(name),
             LitType::String(ref s) => String::from(s),
-            LitType::Number(ref x) => String::from(x.to_string()),
+            LitType::Number(ref x) => x.to_string(),
         }
     }
 }
