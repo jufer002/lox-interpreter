@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum OpType {
     LeftParen,
     RightParen,
@@ -49,11 +49,26 @@ impl ToString for OpType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum LitType {
     Identifier(String),
     String(String),
     Number(f32),
+    False,
+    True,
+    Nil,
+}
+
+impl PartialEq for LitType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // The underlying data need not match; only the type needs to match
+            (Self::Identifier(_), Self::Identifier(_)) => true,
+            (Self::String(_), Self::String(_)) => true,
+            (Self::Number(_), Self::Number(_)) => true,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
 }
 
 impl ToString for LitType {
@@ -62,6 +77,9 @@ impl ToString for LitType {
             LitType::Identifier(ref name) => String::from(name),
             LitType::String(ref s) => String::from(s),
             LitType::Number(ref x) => x.to_string(),
+            LitType::False => "false".to_string(),
+            LitType::True => "true".to_string(),
+            LitType::Nil => "nil".to_string(),
         }
     }
 }
@@ -102,6 +120,27 @@ pub struct Token {
 impl Token {
     pub fn new(token_type: TokenType) -> Self {
         Token { token_type }
+    }
+
+    pub fn op_type(&self) -> Option<&OpType> {
+        match &self.token_type {
+            TokenType::Op(op) => Some(op),
+            _ => None,
+        }
+    }
+
+    pub fn str_val(&self) -> Option<String> {
+        match self.token_type {
+            TokenType::Lit(ref lit_type) => {
+                match lit_type {
+                    LitType::Identifier(s) => Some(String::from(s)),
+                    LitType::String(s) => Some(String::from(s)),
+                    LitType::Number(n) => Some(n.to_string()),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
     }
 }
 
